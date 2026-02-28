@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app/backend
+      - ./nexusai.db:/app/nexusai.db
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
 
