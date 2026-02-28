@@ -1,0 +1,25 @@
+# Build Stage
+FROM node:18-alpine AS build
+
+WORKDIR /app
+
+# Install dependencies first
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copy rest of the application
+COPY . .
+
+# Build the react app
+RUN npm run build
+
+# Production Stage
+FROM nginx:alpine
+
+# Copy built assets to NGINX
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy custom nginx config if you have one, or use default
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
