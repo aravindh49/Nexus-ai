@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.local
+.git/
+backend/__pycache__/
+*.pyc
+nexusai.db
