@@ -141,6 +141,13 @@ class MockBackend {
     return this.mapResource(res.data);
   }
 
+  async remediateResource(resourceId: any) {
+    const id = typeof resourceId === 'string' && resourceId.startsWith('res-') ? parseInt(resourceId.split('-')[1]) : parseInt(resourceId);
+    if (isNaN(id)) return;
+    const res = await resourceApi.remediate(id);
+    return res.data;
+  }
+
   subscribe(callback: (data: any) => void) {
     this.subscribers.push(callback);
     return () => {

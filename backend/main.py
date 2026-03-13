@@ -69,7 +69,7 @@ async def simulate_system_load():
             await websocket_manager.manager.broadcast(json.dumps(message))
             
             # Simulate Anomaly
-            if random.random() > 0.95:
+            if random.random() > 0.85:
                 # Pick a random resource
                 res = random.choice(updated_resources)
                 if res['currentLoad'] > 80:
@@ -215,6 +215,16 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(database.get_db)
 def optimize_task(task_id: int, db: Session = Depends(database.get_db), current_user: schemas.User = Depends(auth.get_current_user)):
     best_resource = ml_engine.AdaptiveOptimizer.run(task_id, db)
     return best_resource
+
+@app.post("/resources/{resource_id}/remediate")
+def remediate_resource(resource_id: int, db: Session = Depends(database.get_db), current_user: schemas.User = Depends(auth.get_current_user)):
+    res = db.query(models.Resource).filter(models.Resource.id == resource_id).first()
+    if not res:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    res.current_load = random.uniform(20.0, 40.0)
+    res.status = "NORMAL"
+    db.commit()
+    return {"message": "AI self-healing protocol executed. Resource normalized.", "resource": res.name}
 
 @app.get("/predictions")
 def get_predictions(db: Session = Depends(database.get_db), current_user: schemas.User = Depends(auth.get_current_user)):

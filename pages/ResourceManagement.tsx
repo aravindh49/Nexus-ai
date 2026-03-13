@@ -4,6 +4,7 @@ import { mockBackend } from '../services/mockBackend';
 import { Resource, ResourceStatus } from '../types';
 import { Server, Database, HardDrive, Plus, MoreVertical } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import TopologyMap from './TopologyMap';
 
 const ResourceManagement: React.FC = () => {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -46,6 +47,8 @@ const ResourceManagement: React.FC = () => {
           Provision Node
         </button>
       </div>
+
+      {resources.length > 0 && <TopologyMap resources={resources} />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
         {resources.map((res) => (

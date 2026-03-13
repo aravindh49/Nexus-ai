@@ -104,7 +104,31 @@ const Navigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: b
 const Header = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const [alerts, setAlerts] = React.useState<any[]>([
+    { id: '1', message: 'GPU Cluster Node-01 Sustained High Load', type: 'high', time: '2m ago' },
+    { id: '2', message: 'API Server West-2 Throttling', type: 'critical', time: '15m ago' }
+  ]);
   const [showNotifications, setShowNotifications] = React.useState(false);
+
+  React.useEffect(() => {
+    const unsubscribe = mockBackend.subscribe((event) => {
+      if (event.type === 'ANOMALY_DETECTED') {
+        setAlerts(prev => [{
+          id: event.data.id,
+          message: event.data.message,
+          type: event.data.severity === 'critical' ? 'critical' : 'high',
+          time: 'Just now',
+          resourceId: event.data.resourceId,
+        }, ...prev]);
+        setShowNotifications(true);
+      } else if (event.type === 'ANOMALY_RESOLVED') {
+        showToast(event.data.message, 'success');
+        setAlerts(prev => prev.filter(a => String(a.resourceId) !== String(event.data.resourceId)));
+      }
+    });
+    return unsubscribe;
+  }, [showToast]);
+
   return (
     <header className="h-24 px-10 flex items-center justify-between sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 transition-all duration-300">
       <div className="flex items-center gap-10">
@@ -127,29 +151,44 @@ const Header = () => {
       <div className="flex items-center gap-8">
         <div className="relative group cursor-pointer" onClick={() => setShowNotifications(!showNotifications)}>
           <Bell className="w-5 h-5 text-slate-400 hover:text-teal-600 transition-colors" />
-          <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+          {alerts.length > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+            </span>
+          )}
 
           {showNotifications && (
             <div className="absolute top-10 right-0 w-80 bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 z-50 animate-in slide-in-from-top-2 fade-in">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-slate-800 tracking-tight">System Alerts</h3>
-                <button onClick={(e) => { e.stopPropagation(); showToast('All alerts cleared', 'success'); setShowNotifications(false); }} className="text-[10px] font-bold text-teal-600 uppercase tracking-widest px-3 py-1 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors">Clear All</button>
+                <button onClick={(e) => { e.stopPropagation(); setAlerts([]); showToast('All alerts cleared', 'success'); setShowNotifications(false); }} className="text-[10px] font-bold text-teal-600 uppercase tracking-widest px-3 py-1 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors">Clear All</button>
               </div>
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                <div className="flex gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                  <div className="w-2 h-2 mt-1.5 rounded-full bg-amber-500 shrink-0"></div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 leading-tight">GPU Cluster Node-01 Sustained High Load</p>
-                    <p className="text-[10px] text-slate-500 font-mono mt-1">2m ago</p>
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                {alerts.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-4">No active alerts.</p>
+                ) : alerts.map(alert => (
+                  <div key={alert.id} className={`flex flex-col gap-2 p-3 rounded-xl border ${alert.type === 'critical' ? 'bg-rose-50 border-rose-100' : 'bg-amber-50 border-amber-100'}`}>
+                    <div className="flex gap-3">
+                      <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${alert.type === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'}`}></div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-slate-800 leading-tight">{alert.message}</p>
+                        <p className="text-[10px] text-slate-500 font-mono mt-1">{alert.time}</p>
+                      </div>
+                    </div>
+                    {alert.type === 'critical' && alert.resourceId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          mockBackend.remediateResource(alert.resourceId);
+                          showToast('Initiating AI Self-Healing Protocol...', 'success');
+                          setAlerts(prev => prev.filter(a => a.id !== alert.id));
+                        }}
+                        className="mt-1 text-[10px] font-bold text-white uppercase tracking-widest px-3 py-1.5 bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors text-center w-full shadow-sm"
+                      >Execute AI Override</button>
+                    )}
                   </div>
-                </div>
-                <div className="flex gap-3 p-3 bg-rose-50 rounded-xl border border-rose-100">
-                  <div className="w-2 h-2 mt-1.5 rounded-full bg-rose-500 shrink-0"></div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 leading-tight">API Server West-2 Throttling</p>
-                    <p className="text-[10px] text-slate-500 font-mono mt-1">15m ago</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -212,7 +251,9 @@ const GlobalAlertListener = () => {
   React.useEffect(() => {
     const unsubscribe = mockBackend.subscribe((event) => {
       if (event.type === 'ANOMALY_DETECTED') {
-        showToast(event.data.message, 'error');
+        showToast("CRITICAL BREACH: " + event.data.message, 'error');
+      } else if (event.type === 'ANOMALY_RESOLVED') {
+        // showToast handled in Header now
       } else if (event.type === 'TASK_UPDATE') {
         // Optional: show task completion toasts but might be noisy.
       }

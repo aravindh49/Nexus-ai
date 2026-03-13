@@ -25,6 +25,7 @@ export const authApi = {
 export const resourceApi = {
   getAll: () => api.get('/resources'),
   create: (data: any) => api.post('/resources', data),
+  remediate: (id: number) => api.post(`/resources/${id}/remediate`),
 };
 
 export const taskApi = {
