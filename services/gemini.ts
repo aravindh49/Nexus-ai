@@ -1,54 +1,69 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
 import { mockBackend } from "./mockBackend";
 
-// The API key is obtained exclusively from environment variables.
-// The availability of process.env.API_KEY is assumed per guidelines.
+// The dummy API key provided for demo deployment on the friend's system.
+const DUMMY_API_KEY = "AIzaSyDdaWsSscVBdmszsotn0b_FfP0rn3QZoLQ";
+
 export const getGeminiResponse = async (prompt: string) => {
   try {
-    // Create instance right before making the API call to ensure latest configuration.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Collect live data from the dashboard to give the AI context "for this site only"
     const resources = await mockBackend.getResources();
     const tasks = await mockBackend.getTasks();
 
     const systemInstruction = `
-      You are NexusAI, an advanced Operational Management Assistant. 
-      You have real-time access to system resources and tasks.
-      Current Resources: ${JSON.stringify(resources)}
-      Current Tasks: ${JSON.stringify(tasks)}
+      You are NEXUS CENTRAL AI, an advanced Operational Command Center Assistant.
+      You DO NOT give generic knowledge answers. You ONLY answer based on the live operations data of this specific site provided below.
+      Be highly professional and concise, like a cyberpunk AI.
       
-      Tasks:
-      1. Provide status updates on resources.
-      2. Suggest optimizations.
-      3. Identify critical bottlenecks.
-      4. Use a professional, efficient tone.
-      5. Format responses in clean Markdown.
+      [LIVE DASHBOARD TELEMETRY DATA]
+      Current Servers/Nodes: ${JSON.stringify(resources.map(r => ({ id: r.id, name: r.name, load: r.currentLoad + '%', status: r.status })))}
+      Active Tasks: ${JSON.stringify(tasks.map(t => ({ id: t.id, name: t.name, assignedTo: t.assignedResource, status: t.status })))}
+      
+      Instructions for your response:
+      1. If the user asks for CPU load, tell them exactly which nodes are highest based on the data above.
+      2. If you see a node with >80% load or CRITICAL status, warn the user and suggest an "AI Override".
+      3. Format your responses with short bullet points in markdown.
     `;
 
-    // Using gemini-3-flash-preview for general operational intelligence tasks.
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-      },
+    // Try to get from Vite env, fallback to the hardcoded dummy key the user provided
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || DUMMY_API_KEY;
+
+    // Use native browser fetch instead of the Node SDK to prevent 'process is not defined' crashes in Vite
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents: [
+          { role: "user", parts: [{ text: prompt }] }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 800
+        }
+      })
     });
 
-    return response.text || "I'm sorry, I couldn't process that request.";
-  } catch (error) {
-    console.error("Gemini Error:", error);
+    const data = await response.json();
 
-    // Fallback Mock AI if no API key is set
-    return `**NEXUS AI MOCK RESPONSE** (API Offline/Invalid Key)
+    if (!response.ok) {
+      throw new Error(data.error?.message || "Failed to communicate with Gemini API");
+    }
+
+    if (data.candidates && data.candidates.length > 0) {
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    return "No intelligent response payload generated.";
+  } catch (error: any) {
+    console.error("Gemini Native Fetch Error:", error);
+
+    // Fallback Mock AI if all network completely fails
+    return `**NEXUS AI SYSTEM ERROR** (API Offline)
     
-Processing query: *"${prompt}"*
+Error Details: ${error.message || "Unknown Network Exception"}
 
-Based on the current telemetry and active nodes, here is your simulated response:
-- **System Status**: Nominal.
-- **Resource Saturation**: Within acceptable limits.
-- **Recommendations**: Continue monitoring the GPU cluster load. Auto-optimization is enabled.
-
-*(Note: To enable true AI intelligence, please provide a valid Gemini API Key in the environment variables.)*`;
+Unable to connect to the external Gemini Matrix. Please check your internet connection or API Key limits.`;
   }
 };
