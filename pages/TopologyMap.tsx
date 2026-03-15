@@ -55,30 +55,19 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
         fgRef.current.d3Force('charge').strength(-800);
         fgRef.current.d3Force('link').distance(120);
 
-        // Auto-rotate camera closer to the structure
-        let angle = 0;
-        let animationFrameId: number;
-
-        const rotateCamera = () => {
+        // Set an initial cinematic camera position, but do NOT auto-rotate
+        // so the user has full control.
+        const timeoutId = setTimeout(() => {
             if (fgRef.current) {
-                // Closer distance
-                const distance = 180;
-                fgRef.current.cameraPosition({
-                    x: distance * Math.sin(angle),
-                    z: distance * Math.cos(angle),
-                    y: 50 // Slightly elevated angle
-                });
-                angle += Math.PI / 800; // slightly faster
+                fgRef.current.cameraPosition(
+                    { x: 0, y: 80, z: 350 }, // Position the camera slightly up and back
+                    { x: 0, y: 0, z: 0 },    // Look at the center
+                    2000                     // Smooth transition
+                );
             }
-            animationFrameId = requestAnimationFrame(rotateCamera);
-        };
+        }, 500);
 
-        const timeoutId = setTimeout(() => { rotateCamera(); }, 2000);
-
-        return () => {
-            clearTimeout(timeoutId);
-            cancelAnimationFrame(animationFrameId);
-        };
+        return () => clearTimeout(timeoutId);
     }, []);
 
     return (
