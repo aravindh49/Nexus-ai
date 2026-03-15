@@ -13,10 +13,8 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
 
     useEffect(() => {
-        // Generate nodes and links from resources
-        // Generate nodes and links from resources
         const nodes: any[] = [
-            { id: 'nexus-core', name: 'NEXUS CENTRAL AI', group: 'core', val: 25, color: '#8b5cf6' } // Neon Purple Core
+            { id: 'nexus-core', name: 'NEXUS CENTRAL AI', group: 'core', val: 35, color: '#a855f7' } // Larger Neon Purple Core
         ];
         const links: any[] = [];
 
@@ -26,8 +24,8 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
             else if (res.status === 'HIGH_LOAD' || res.currentLoad > 60) color = '#f59e0b'; // amber
 
             // Determine size by capacity or type
-            let val = 10;
-            if (res.type === 'GPU') val = 15;
+            let val = 18;
+            if (res.type === 'GPU') val = 25;
 
             nodes.push({
                 id: res.id,
@@ -51,24 +49,30 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
     }, [resources]);
 
     useEffect(() => {
-        // Auto-rotate camera slowly to give a highly active, matrix-like feel
+        if (!fgRef.current) return;
+
+        // Push nodes further apart so they aren't clumped together
+        fgRef.current.d3Force('charge').strength(-800);
+        fgRef.current.d3Force('link').distance(120);
+
+        // Auto-rotate camera closer to the structure
         let angle = 0;
         let animationFrameId: number;
 
         const rotateCamera = () => {
             if (fgRef.current) {
-                // Ensure we don't override manual zooms significantly by keeping radius dynamic or large
-                const distance = 250;
+                // Closer distance
+                const distance = 180;
                 fgRef.current.cameraPosition({
                     x: distance * Math.sin(angle),
-                    z: distance * Math.cos(angle)
+                    z: distance * Math.cos(angle),
+                    y: 50 // Slightly elevated angle
                 });
-                angle += Math.PI / 1000;
+                angle += Math.PI / 800; // slightly faster
             }
             animationFrameId = requestAnimationFrame(rotateCamera);
         };
 
-        // Slight delay to let graph initialize
         const timeoutId = setTimeout(() => { rotateCamera(); }, 2000);
 
         return () => {
@@ -78,32 +82,48 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
     }, []);
 
     return (
-        <div className="w-full h-[400px] bg-slate-900 rounded-[2.5rem] overflow-hidden border border-slate-800 shadow-2xl relative">
-            <div className="absolute top-4 left-6 z-10">
-                <h3 className="text-teal-400 font-bold text-sm tracking-[0.2em] uppercase flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+        <div className="w-full h-[600px] bg-slate-900 rounded-[2.5rem] overflow-hidden border border-slate-800 shadow-2xl relative">
+            <div className="absolute top-6 left-8 z-10">
+                <h3 className="text-teal-400 font-black text-lg tracking-[0.3em] uppercase flex items-center gap-3">
+                    <span className="w-3 h-3 rounded-full bg-teal-400 animate-pulse shadow-[0_0_15px_rgba(45,212,191,0.8)]"></span>
                     Live Matrix Topology
                 </h3>
             </div>
             <ForceGraph3D
                 ref={fgRef}
                 graphData={graphData}
-                backgroundColor="#0f172a"
+                backgroundColor="#0b0f19"
                 nodeThreeObject={(node: any) => {
                     if (node.id === 'nexus-core') {
                         const group = new THREE.Group();
-                        // Make core glowing
+
+                        // Glowing Sphere Core
                         const geometry = new THREE.SphereGeometry(node.val, 32, 32);
-                        const material = new THREE.MeshPhongMaterial({ color: node.color, transparent: true, opacity: 0.9, emissive: node.color, emissiveIntensity: 0.5 });
+                        const material = new THREE.MeshPhysicalMaterial({
+                            color: node.color,
+                            transparent: true,
+                            opacity: 0.8,
+                            emissive: node.color,
+                            emissiveIntensity: 0.8,
+                            roughness: 0.2,
+                            metalness: 0.8
+                        });
                         const sphere = new THREE.Mesh(geometry, material);
                         group.add(sphere);
 
-                        // Make core text stand out
+                        // Outer Holographic Ring
+                        const ringGeo = new THREE.TorusGeometry(node.val * 1.5, 0.5, 16, 100);
+                        const ringMat = new THREE.MeshBasicMaterial({ color: '#c084fc', transparent: true, opacity: 0.5 });
+                        const ring = new THREE.Mesh(ringGeo, ringMat);
+                        ring.rotation.x = Math.PI / 2;
+                        group.add(ring);
+
+                        // Floating Text
                         const sprite = new SpriteText("★ " + node.name + " ★");
-                        sprite.color = '#e2e8f0'; // bright white/slate
+                        sprite.color = '#ffffff';
                         sprite.fontWeight = 'bold';
-                        sprite.textHeight = 10;
-                        sprite.position.y = 35;
+                        sprite.textHeight = 12;
+                        sprite.position.y = 45;
                         group.add(sprite);
                         return group;
                     }
@@ -144,7 +164,7 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
                         3000  // ms transition duration
                     );
                 }}
-                height={400}
+                height={600}
             />
         </div>
     );
