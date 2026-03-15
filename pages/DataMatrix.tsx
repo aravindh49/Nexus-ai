@@ -12,6 +12,8 @@ const dummyData = [
     { time: '24:00', ingress: 3490, egress: 4300, threat: 30 },
 ];
 
+import SecurityScanner from './SecurityScanner';
+
 const DataMatrix: React.FC = () => {
     return (
         <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-700">
@@ -84,6 +86,11 @@ const DataMatrix: React.FC = () => {
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
+            </div>
+
+            {/* AI Security Inference Terminal */}
+            <div className="mt-8 animate-in slide-in-from-bottom-6 fade-in duration-700">
+                <SecurityScanner />
             </div>
         </div>
     );
