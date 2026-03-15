@@ -10,6 +10,7 @@ interface TopologyProps {
 
 const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
     const fgRef = useRef<any>();
+    const linksRef = useRef<any[]>([]);
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
 
     useEffect(() => {
@@ -36,15 +37,24 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
                 load: res.currentLoad
             });
 
-            // Link everything to core to show topology
-            links.push({
-                source: res.id,
-                target: 'nexus-core',
-                color: color,
-                width: res.currentLoad > 80 ? 3 : 1
-            });
+            // REUSE link objects to prevent the physics engine from violently shaking!
+            let link = linksRef.current.find((l: any) => (l.source.id || l.source) === res.id);
+            if (link) {
+                // Mutate to update styles without recreating the physics spring
+                link.color = color;
+                link.width = res.currentLoad > 80 ? 3 : 1;
+            } else {
+                link = {
+                    source: res.id,
+                    target: 'nexus-core',
+                    color: color,
+                    width: res.currentLoad > 80 ? 3 : 1
+                };
+            }
+            links.push(link);
         });
 
+        linksRef.current = links;
         setGraphData({ nodes, links });
     }, [resources]);
 
