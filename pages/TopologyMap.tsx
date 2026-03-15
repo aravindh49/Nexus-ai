@@ -14,8 +14,9 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
 
     useEffect(() => {
         // Generate nodes and links from resources
+        // Generate nodes and links from resources
         const nodes: any[] = [
-            { id: 'nexus-core', name: 'Nexus Core', group: 'core', val: 20, color: '#0ea5e9' } // Central Node
+            { id: 'nexus-core', name: 'NEXUS CENTRAL AI', group: 'core', val: 25, color: '#8b5cf6' } // Neon Purple Core
         ];
         const links: any[] = [];
 
@@ -49,6 +50,33 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
         setGraphData({ nodes, links });
     }, [resources]);
 
+    useEffect(() => {
+        // Auto-rotate camera slowly to give a highly active, matrix-like feel
+        let angle = 0;
+        let animationFrameId: number;
+
+        const rotateCamera = () => {
+            if (fgRef.current) {
+                // Ensure we don't override manual zooms significantly by keeping radius dynamic or large
+                const distance = 250;
+                fgRef.current.cameraPosition({
+                    x: distance * Math.sin(angle),
+                    z: distance * Math.cos(angle)
+                });
+                angle += Math.PI / 1000;
+            }
+            animationFrameId = requestAnimationFrame(rotateCamera);
+        };
+
+        // Slight delay to let graph initialize
+        const timeoutId = setTimeout(() => { rotateCamera(); }, 2000);
+
+        return () => {
+            clearTimeout(timeoutId);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, []);
+
     return (
         <div className="w-full h-[400px] bg-slate-900 rounded-[2.5rem] overflow-hidden border border-slate-800 shadow-2xl relative">
             <div className="absolute top-4 left-6 z-10">
@@ -64,15 +92,18 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
                 nodeThreeObject={(node: any) => {
                     if (node.id === 'nexus-core') {
                         const group = new THREE.Group();
+                        // Make core glowing
                         const geometry = new THREE.SphereGeometry(node.val, 32, 32);
-                        const material = new THREE.MeshPhongMaterial({ color: node.color, transparent: true, opacity: 0.8 });
+                        const material = new THREE.MeshPhongMaterial({ color: node.color, transparent: true, opacity: 0.9, emissive: node.color, emissiveIntensity: 0.5 });
                         const sphere = new THREE.Mesh(geometry, material);
                         group.add(sphere);
 
-                        const sprite = new SpriteText(node.name);
-                        sprite.color = '#ffffff';
-                        sprite.textHeight = 8;
-                        sprite.position.y = 25;
+                        // Make core text stand out
+                        const sprite = new SpriteText("★ " + node.name + " ★");
+                        sprite.color = '#e2e8f0'; // bright white/slate
+                        sprite.fontWeight = 'bold';
+                        sprite.textHeight = 10;
+                        sprite.position.y = 35;
                         group.add(sprite);
                         return group;
                     }
@@ -99,9 +130,9 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
                 }}
                 linkWidth={link => link.width}
                 linkColor={link => link.color}
-                linkDirectionalParticles={link => (link.width === 3 ? 4 : 2)}
-                linkDirectionalParticleSpeed={link => link.width * 0.005}
-                linkDirectionalParticleWidth={2}
+                linkDirectionalParticles={link => (link.width === 3 ? 6 : 3)}
+                linkDirectionalParticleSpeed={link => link.width * 0.008}
+                linkDirectionalParticleWidth={3}
                 enableNodeDrag={true}
                 onNodeClick={node => {
                     // Aim at node from outside it
