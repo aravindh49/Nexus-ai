@@ -11,12 +11,15 @@ interface TopologyProps {
 const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
     const fgRef = useRef<any>();
     const linksRef = useRef<any[]>([]);
+    const nodesRef = useRef<any[]>([]);
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
 
     useEffect(() => {
-        const nodes: any[] = [
-            { id: 'nexus-core', name: 'NEXUS CENTRAL AI', group: 'core', val: 35, color: '#a855f7' } // Larger Neon Purple Core
-        ];
+        let coreNode = nodesRef.current.find((n: any) => n.id === 'nexus-core');
+        if (!coreNode) {
+            coreNode = { id: 'nexus-core', name: 'NEXUS CENTRAL AI', group: 'core', val: 35, color: '#a855f7' };
+        }
+        const nodes: any[] = [coreNode];
         const links: any[] = [];
 
         resources.forEach(res => {
@@ -28,14 +31,22 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
             let val = 18;
             if (res.type === 'GPU') val = 25;
 
-            nodes.push({
-                id: res.id,
-                name: res.name,
-                group: res.type,
-                val: val,
-                color: color,
-                load: res.currentLoad
-            });
+            let node = nodesRef.current.find((n: any) => n.id === res.id);
+            if (node) {
+                node.color = color;
+                node.val = val;
+                node.load = res.currentLoad;
+            } else {
+                node = {
+                    id: res.id,
+                    name: res.name,
+                    group: res.type,
+                    val: val,
+                    color: color,
+                    load: res.currentLoad
+                };
+            }
+            nodes.push(node);
 
             // REUSE link objects to prevent the physics engine from violently shaking!
             let link = linksRef.current.find((l: any) => (l.source.id || l.source) === res.id);
@@ -54,6 +65,7 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
             links.push(link);
         });
 
+        nodesRef.current = nodes;
         linksRef.current = links;
         setGraphData({ nodes, links });
     }, [resources]);
