@@ -152,9 +152,13 @@ const TopologyMap: React.FC<TopologyProps> = ({ resources }) => {
                     group.add(mesh);
 
                     const sprite = new SpriteText(`${node.name}\n[${node.load}%]`);
-                    sprite.color = node.color;
-                    sprite.textHeight = 4;
-                    sprite.position.y = 15;
+                    // Use bright white text with a black outline so it can be read from far away regardless of the node color
+                    sprite.color = '#ffffff';
+                    sprite.fontWeight = 'bold';
+                    sprite.strokeWidth = 1;
+                    sprite.strokeColor = '#000000';
+                    sprite.textHeight = 6;
+                    sprite.position.y = Math.max(20, node.val + 10);
                     group.add(sprite);
 
                     return group;
